@@ -11,10 +11,9 @@ A focused Python desktop toolkit that turned repetitive SQL release prep into a 
 
 ## What This Project Delivers
 
-- **DB Automation Converter**: Transforms raw procedures/functions/triggers into automation-ready SQL packages with consistent structure.
-- **INSERT Consolidator**: Converts fragmented MySQL Workbench INSERT exports into stable consolidated statements and generates Excel-based audit summaries.
-- **Workfile Generator**: Produces standardized SQL workfiles with naming and folder conventions for smoother handoffs.
-- **Multi-Schema Combiner**: Builds deployment-ready outputs across multiple schemas from a single workflow.
+- Standardizes raw SQL objects into automation-ready scripts with consistent structure and safer deployment formatting.
+- Consolidates fragmented INSERT exports into reliable batch statements and provides quick audit summaries, including Excel output.
+- Generates versioned workfiles and combines validated scripts across multiple schemas to produce consistent release artifacts.
 
 ## Tech Stack and Engineering Signals
 
