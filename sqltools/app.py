@@ -494,8 +494,15 @@ def main() -> int:
         window = MainWindow()
         if len(window.pages) != len(window.features) or compared.counts["identical"] != 1:
             return 3
+        from sqltools.smoke import run_feature_workflows
+
+        failure = run_feature_workflows(window.features)
+        if failure:
+            if sys.stderr is not None:
+                print(f"Smoke test workflow failed - {failure}", file=sys.stderr)
+            return 4
         if sys.stdout is not None:
-            print("SQL Tools GUI, feature pages, and parser smoke test passed")
+            print("SQL Tools GUI, feature pages, workflows, and parser smoke test passed")
         window.deleteLater()
         return 0
 

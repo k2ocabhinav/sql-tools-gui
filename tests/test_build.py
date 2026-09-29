@@ -116,3 +116,22 @@ def test_portable_zip_preserves_runtime_tree_and_has_stable_order(tmp_path: Path
         ]
         assert archive.read("SQL Tools/SQL Tools.exe") == b"executable"
         assert archive.read("SQL Tools/_internal/PySide6/QtCore.dll") == b"runtime"
+
+
+def test_smoke_workflows_run_every_feature_against_real_services():
+    from sqltools.smoke import CHECKS, run_feature_workflows
+
+    assert set(CHECKS) == set(_BUILD.ALL_FEATURES)
+    assert run_feature_workflows(list(CHECKS)) is None
+
+
+def test_spec_trims_only_unused_parts_and_keeps_what_the_app_needs():
+    spec = (_ROOT / "SQL Tools.spec").read_text(encoding="utf-8")
+    # Trimmed: unused Qt bindings, TLS, translations, image-format plugins.
+    for trimmed in ("PySide6.QtNetwork", '"ssl"', "plugins/imageformats", "qt/translations"):
+        assert trimmed in spec
+    # Must stay bundled: the macOS platform plugin links QtDBus, and the runtime
+    # window/sidebar icon is loaded from assets/icon.png.
+    assert '"PySide6.QtDBus"' in spec  # only its Python binding is excluded
+    assert "libqcocoa" not in spec.split("UNUSED_QT_PARTS")[1].split(")")[0]
+    assert "assets/icon.png" in spec

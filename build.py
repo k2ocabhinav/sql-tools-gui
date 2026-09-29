@@ -203,7 +203,8 @@ def main() -> int:
                 "create",
                 "from",
                 "--format",
-                "UDZO",
+                # LZMA: about a quarter smaller than zlib (UDZO); needs macOS 10.15+.
+                "ULMO",
                 str(app_bundle),
                 str(disk_image),
             ],
@@ -219,7 +220,9 @@ def main() -> int:
         print(f"Application bundle: {app_bundle}")
         print(f"Disk image: {disk_image}")
 
-    print(f"Build workspace: {output_dir}")
+    # PyInstaller's intermediate files are 100+ MB and only useful for debugging a build.
+    shutil.rmtree(work_dir, ignore_errors=True)
+    print(f"Build output: {output_dir}")
     return 0
 
 

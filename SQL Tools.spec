@@ -47,12 +47,35 @@ hiddenimports = [
     "sqltools.jobs",
     "sqltools.services",
     "sqltools.theme",
+    "sqltools.smoke",
 ]
 for feature in selected_features:
     hiddenimports.extend(FEATURE_MODULES[feature])
 if any(feature in selected_features for feature in ("INSERT_CONSOLIDATOR", "TABLE_COMPARE")):
     hiddenimports.extend(["openpyxl", "openpyxl.cell._writer", "openpyxl.writer.excel"])
 hiddenimports = list(dict.fromkeys(hiddenimports))
+
+# Size trimming. Everything here is provably unused by SQL Tools: the code only
+# uses QtCore/QtGui/QtWidgets, reads and writes UTF-8 files, and never opens a
+# network connection. hashlib falls back to its built-in implementations without
+# OpenSSL, and zipfile/shutil treat lzma and bz2 as optional.
+EXCLUDED_MODULES = [
+    # Heavy scientific/GUI stacks that a stray dependency could otherwise pull in.
+    "tkinter", "matplotlib", "numpy", "pandas", "scipy", "PIL", "cv2", "torch",
+    # Qt Python bindings the app never imports. (The QtDBus *library* stays: the
+    # macOS platform plugin links it; only its Python binding is dropped.)
+    "PySide6.QtNetwork", "PySide6.QtDBus",
+    # Networking / TLS stack (~4 MB with OpenSSL).
+    "ssl", "_ssl", "_hashlib",
+    # Interpreter self-tests and interactive helpers.
+    "_testcapi", "_testlimitedcapi", "_testinternalcapi", "_testmultiphase",
+    "unittest", "pydoc", "doctest", "pdb", "readline",
+    # Optional compression back-ends.
+    "lzma", "_lzma", "bz2", "_bz2",
+    # Legacy East-Asian codecs; every file this app reads or writes is UTF-8.
+    "_codecs_jp", "_codecs_cn", "_codecs_hk", "_codecs_kr", "_codecs_tw",
+    "_codecs_iso2022", "_multibytecodec",
+]
 
 datas = []
 profile_path = Path("generated/build_profile.json")
@@ -86,9 +109,33 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter", "matplotlib", "numpy", "pandas", "scipy", "PIL", "cv2", "torch"],
+    excludes=[*EXCLUDED_MODULES],
     noarchive=False,
 )
+
+# Symbol stripping only shrinks Mach-O binaries; it is a no-op cost elsewhere.
+STRIP_SYMBOLS = sys.platform == "darwin"
+
+# PyInstaller's Qt hooks bundle every image-format plugin, the SVG icon engine, a
+# touch plugin, the QtNetwork/QtSvg libraries and all Qt translations. The app only shows PNG artwork
+# (built into QtGui), so drop them. Kept on purpose: the native platform and
+# style plugins, offscreen (the build smoke test runs without a display) and
+# QtDBus (the macOS platform plugin links it).
+UNUSED_QT_PARTS = (
+    "plugins/imageformats", "plugins/iconengines", "plugins/generic",
+    "qminimal", "qtnetwork", "qt6network", "qtsvg", "qt6svg",
+    # Qt's own UI strings in ~90 languages; the app never installs a QTranslator.
+    "pyside6/qt/translations", "pyside6/translations",
+)
+
+
+def _is_unused(entry):
+    name = str(entry[0]).replace("\\", "/").lower()
+    return any(part in name for part in UNUSED_QT_PARTS)
+
+
+a.binaries = [entry for entry in a.binaries if not _is_unused(entry)]
+a.datas = [entry for entry in a.datas if not _is_unused(entry)]
 
 pyz = PYZ(a.pure)
 exe = EXE(
@@ -98,7 +145,7 @@ exe = EXE(
     exclude_binaries=True,
     name="SQL Tools",
     debug=False,
-    strip=False,
+    strip=STRIP_SYMBOLS,
     upx=False,
     console=False,
     disable_windowed_traceback=False,
@@ -112,7 +159,7 @@ collected = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    strip=False,
+    strip=STRIP_SYMBOLS,
     upx=False,
     name="SQL Tools",
 )

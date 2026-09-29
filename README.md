@@ -56,6 +56,8 @@ uv sync --locked --extra dev
 uv run --locked --extra dev python build.py
 ```
 
+The macOS app is about 57 MB and the `.dmg` about 15 MB (LZMA-compressed): the spec drops Qt parts and Python modules this app never uses (network/TLS, image-format plugins, translations, legacy codecs), and the build's smoke test runs each feature's real workflow so trimming cannot silently break one. PyInstaller's intermediate `work` folder is deleted after a successful build.
+
 Windows builds a portable ZIP and, when Inno Setup is installed, an optional installer. macOS builds a self-contained `.app` and compressed `.dmg`. Build workspaces and artifacts go in a unique folder under the OS temporary directory by default, outside cloud-synced checkouts; pass `--output-root PATH` to choose another local directory. The packaged executable runs in smoke-test mode with development Python and Qt search paths removed. PyInstaller must run on the target platform; this project does not cross-compile.
 
 To build a feature subset, pass comma-separated feature IDs:
