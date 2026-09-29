@@ -84,3 +84,25 @@ def test_focus_and_validation_do_not_shift_editable_text(qtbot):
     qtbot.wait(10)
     assert field.inputMethodQuery(Qt.InputMethodQuery.ImCursorRectangle) == initial_cursor
     assert field.sizeHint() == initial_size
+
+
+def test_control_icons_are_generated_once_and_reused(tmp_path, monkeypatch):
+    import sqltools.theme as theme
+
+    monkeypatch.setattr(theme.tempfile, "gettempdir", lambda: str(tmp_path))
+    folder = theme._control_icons()
+    check = folder / "check.png"
+    assert check.is_file() and (folder / "chevron-down@2x.png").is_file()
+    stamp = check.stat().st_mtime_ns
+    assert theme._control_icons() == folder
+    assert check.stat().st_mtime_ns == stamp  # a second instance never rewrites it
+
+
+def test_theme_still_applies_when_the_icon_folder_cannot_be_written(tmp_path, monkeypatch, qtbot):
+    import sqltools.theme as theme
+
+    blocker = tmp_path / "not-a-folder"
+    blocker.write_text("occupied")
+    monkeypatch.setattr(theme.tempfile, "gettempdir", lambda: str(blocker))
+    theme.apply_theme(QApplication.instance())  # must not raise
+    assert "QCheckBox::indicator" in QApplication.instance().styleSheet()

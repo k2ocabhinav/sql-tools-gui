@@ -63,12 +63,12 @@ Windows builds a portable ZIP and, when Inno Setup is installed, an optional ins
 To build a feature subset, pass comma-separated feature IDs:
 
 ```sh
-uv run --locked python build.py --features DB_AUTOMATION,TABLE_COMPARE
+uv run --locked --extra dev python build.py --features DB_AUTOMATION,TABLE_COMPARE
 ```
 
 Windows signing uses `SQL_TOOLS_SIGN_THUMBPRINT` and an available Windows SDK `signtool`. macOS signing uses `SQL_TOOLS_CODESIGN_IDENTITY`; set `SQL_TOOLS_NOTARY_PROFILE` to submit and staple the DMG through Apple's notary service. Keep signing credentials in the developer or CI secret store, outside the repository.
 
-For local builds, copy `.sqltools-private.example.json` to the ignored `.sqltools-private.json` and edit the schema, developer-name, and temporary-prefix defaults for your environment. The ordinary build embeds those local defaults in its generated profile. For a package intended to share or publish, use `uv run --locked python build.py --public`; this forces generic schema and workfile defaults even when a private settings file exists. Unsigned builds can trigger SmartScreen, Gatekeeper, or managed-device application controls. Signing establishes publisher identity, but it does not override a policy that blocks unapproved software.
+For local builds, copy `.sqltools-private.example.json` to the ignored `.sqltools-private.json` and edit the schema, developer-name, and temporary-prefix defaults for your environment. The ordinary build embeds those local defaults in its generated profile. For a package intended to share or publish, use `uv run --locked --extra dev python build.py --public`; this forces generic schema and workfile defaults even when a private settings file exists. Unsigned builds can trigger SmartScreen, Gatekeeper, or managed-device application controls. Signing establishes publisher identity, but it does not override a policy that blocks unapproved software.
 
 ## Development and validation
 
@@ -79,7 +79,9 @@ uv run --locked --extra dev ruff check .
 uv run --locked --extra dev python -m sqltools --smoke-test
 ```
 
-The smoke test constructs every enabled Qt page, parses a small export, and runs a comparison without opening a window. The GitHub Actions workflow runs tests and native build smoke checks on Windows x64, Apple Silicon macOS, and Intel macOS.
+`uv sync` makes the environment match exactly what you request, so a plain `uv sync --locked` removes the development tools (PyInstaller, pytest, ruff); keep `--extra dev` while developing.
+
+The smoke test constructs every enabled Qt page, parses a small export, and runs each enabled feature's real workflow (Excel export, workfile, INSERT, DB automation, schema combining) on synthetic data without opening a window. The GitHub Actions workflow runs tests and native build smoke checks on Windows x64, Apple Silicon macOS, and Intel macOS.
 
 ## Architecture and boundaries
 
@@ -88,6 +90,8 @@ The smoke test constructs every enabled Qt page, parses a small export, and runs
 - `sqltools/jobs.py` runs one worker at a time. Workers do not access Qt widgets or models. Table parsing, comparison, export, and output commits check cancellation while running; legacy converters stop at the next operation boundary.
 - `sqltools/services.py` adapts page requests to existing feature logic and stages generated files.
 - `logic/` owns SQL and comparison behavior. The compact table path stores rows as tuples and comparison results as source-row offsets to avoid duplicate dictionaries for large exports.
+- `assets/icon.svg` is the master app icon. After editing it, run `uv run --extra dev python packaging/make_icons.py` to regenerate `icon.png`, `icon.ico` and `icon.icns`.
+- `packaging/` holds the Windows installer script and the icon generator.
 - `tests/` covers established transformations, selected-column comparison, staged-output safety, and text-safe Excel export.
 
 The app reads files supplied by the user. Live RDS connections, stored credentials, and CSV/JSON comparison exports are not implemented in this release. Before direct database features ship, they need secure credential handling, TLS, timeouts, read-only query boundaries, and bounded fetches.

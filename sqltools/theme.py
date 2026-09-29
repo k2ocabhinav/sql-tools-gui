@@ -1,6 +1,7 @@
 """SQL Tools visual tokens and platform-native type defaults."""
 
 import tempfile
+import zlib
 from pathlib import Path
 
 from PySide6.QtCore import QPointF, Qt
@@ -65,18 +66,28 @@ def _control_icons() -> Path:
     """Write the few glyphs Qt stylesheets cannot draw themselves (check, chevrons).
 
     They are generated with QPainter rather than shipped so the package carries no
-    image assets and the glyphs always follow the theme tokens.
+    image assets and the glyphs always follow the theme tokens. The folder name
+    carries a hash of the glyph definitions, so a changed design never reuses stale
+    files, and existing files are left alone, so two running instances cannot
+    overwrite each other mid-read. If the temp folder is not writable the app still
+    starts; the controls just lose their glyphs.
     """
-    folder = Path(tempfile.gettempdir()) / "sqltools-theme-icons"
-    folder.mkdir(parents=True, exist_ok=True)
     glyphs = {
         "check": (16, ((4, 8.5), (7, 11.5), (12, 5)), "#FFFFFF", 2.0),
         "chevron-up": (12, ((2.5, 7.5), (6, 4), (9.5, 7.5)), COLORS["text"], 1.6),
         "chevron-down": (12, ((2.5, 4.5), (6, 8), (9.5, 4.5)), COLORS["text"], 1.6),
     }
-    for name, (size, points, color, width) in glyphs.items():
-        _draw_icon(folder / f"{name}.png", size, 1, points, color, width)
-        _draw_icon(folder / f"{name}@2x.png", size, 2, points, color, width)
+    digest = f"{zlib.crc32(repr(glyphs).encode()):08x}"
+    folder = Path(tempfile.gettempdir()) / f"sqltools-theme-icons-{digest}"
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        for name, (size, points, color, width) in glyphs.items():
+            for scale, suffix in ((1, ""), (2, "@2x")):
+                target = folder / f"{name}{suffix}.png"
+                if not target.exists():
+                    _draw_icon(target, size, scale, points, color, width)
+    except OSError:
+        pass
     return folder
 
 
