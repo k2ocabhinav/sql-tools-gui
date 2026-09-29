@@ -28,6 +28,14 @@ uv sync --locked
 uv run --locked python -m sqltools
 ```
 
+### Cloud-synced folders (OneDrive, iCloud, Dropbox)
+
+Do not let the Python environment live inside a synced folder: OneDrive rejects file names that Python packages contain (for example `.lock`) and reports sync errors. `SQL Tools.command`, `SQL Tools.bat` and `build.bat` already keep it outside the project by setting `UV_PROJECT_ENVIRONMENT`. For your own terminal commands, set it once (macOS/Linux shown; on Windows use `setx UV_PROJECT_ENVIRONMENT "%LOCALAPPDATA%\SQLTools\venv"`):
+
+```sh
+export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/sql-tools"
+```
+
 After syncing, you can also double-click `SQL Tools.command` on macOS or `SQL Tools.bat` on Windows. `python sql_tools.py` remains a compatibility entry point. Release artifacts are self-contained and do not require a separately installed Python runtime.
 
 ## Install a release
@@ -45,7 +53,7 @@ Install the development dependencies and build on Windows x64, Apple Silicon, or
 
 ```sh
 uv sync --locked --extra dev
-uv run --locked python build.py
+uv run --locked --extra dev python build.py
 ```
 
 Windows builds a portable ZIP and, when Inno Setup is installed, an optional installer. macOS builds a self-contained `.app` and compressed `.dmg`. Build workspaces and artifacts go in a unique folder under the OS temporary directory by default, outside cloud-synced checkouts; pass `--output-root PATH` to choose another local directory. The packaged executable runs in smoke-test mode with development Python and Qt search paths removed. PyInstaller must run on the target platform; this project does not cross-compile.
@@ -64,9 +72,9 @@ For local builds, copy `.sqltools-private.example.json` to the ignored `.sqltool
 
 ```sh
 uv sync --locked --extra dev
-uv run --locked pytest
-uv run --locked ruff check .
-uv run --locked python -m sqltools --smoke-test
+uv run --locked --extra dev pytest
+uv run --locked --extra dev ruff check .
+uv run --locked --extra dev python -m sqltools --smoke-test
 ```
 
 The smoke test constructs every enabled Qt page, parses a small export, and runs a comparison without opening a window. The GitHub Actions workflow runs tests and native build smoke checks on Windows x64, Apple Silicon macOS, and Intel macOS.

@@ -2,8 +2,12 @@
 # SQL Tools developer launcher. Release builds are self-contained .app bundles.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-if [ -x "$SCRIPT_DIR/.venv/bin/python" ]; then
-    exec "$SCRIPT_DIR/.venv/bin/python" -m sqltools
+# Keep the Python environment outside the project folder: cloud-synced folders
+# (OneDrive) reject files such as ".lock" that Python packages contain.
+export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.venvs/sql-tools}"
+
+if [ -x "$UV_PROJECT_ENVIRONMENT/bin/python" ]; then
+    cd "$SCRIPT_DIR" && exec "$UV_PROJECT_ENVIRONMENT/bin/python" -m sqltools
 fi
 
 if command -v uv >/dev/null 2>&1; then
