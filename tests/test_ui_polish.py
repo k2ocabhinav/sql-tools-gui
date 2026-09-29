@@ -273,3 +273,38 @@ def test_checked_source_segment_reserves_its_semibold_width(qtbot):
         bold = button.font()
         bold.setWeight(bold.Weight.DemiBold)
         assert button.minimumWidth() >= QFontMetrics(bold).horizontalAdvance(button.text())
+
+
+def test_app_icon_assets_are_valid_and_bundled_for_the_runtime(qtbot):
+    import struct
+    from pathlib import Path
+
+    from PySide6.QtGui import QImage
+
+    from sqltools.app import _app_icon, _asset_path
+
+    assets = Path(__file__).resolve().parents[1] / "assets"
+    assert (assets / "icon.svg").read_text(encoding="utf-8").lstrip().startswith("<svg")
+    png = QImage(str(_asset_path("icon.png")))
+    assert not png.isNull() and png.width() == png.height() == 512
+    assert png.pixelColor(png.width() // 2, 4).alpha() > 200  # tight crop: no empty margin
+    ico = (assets / "icon.ico").read_bytes()
+    _reserved, kind, count = struct.unpack("<HHH", ico[:6])
+    assert kind == 1 and count >= 6
+    assert not _app_icon().isNull()
+    spec = (assets.parent / "SQL Tools.spec").read_text(encoding="utf-8")
+    assert '"assets"' in spec and "assets/icon.png" in spec
+
+
+def test_main_window_uses_the_app_icon_and_shows_the_brand_mark(qtbot, monkeypatch, tmp_path):
+    from PySide6.QtWidgets import QLabel
+
+    monkeypatch.setattr(
+        "sqltools.app.QSettings",
+        lambda: QSettings(str(tmp_path / "ui.ini"), QSettings.Format.IniFormat),
+    )
+    window = MainWindow()
+    qtbot.addWidget(window)
+    assert not window.windowIcon().isNull()
+    mark = window.sidebar.findChild(QLabel, "brandMark")
+    assert mark is not None and not mark.pixmap().isNull()

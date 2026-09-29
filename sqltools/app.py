@@ -19,7 +19,7 @@ from PySide6.QtCore import (
     QStandardPaths,
     Qt,
 )
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -60,6 +60,21 @@ class _JobState:
     page: QWidget
     name: str
     callback: Callable | None
+
+
+def _asset_path(name: str) -> Path:
+    """Bundled assets live beside the sources, or in the PyInstaller data folder."""
+    base = (
+        Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        if getattr(sys, "frozen", False)
+        else Path(__file__).resolve().parents[1]
+    )
+    return base / "assets" / name
+
+
+def _app_icon() -> QIcon:
+    path = _asset_path("icon.png")
+    return QIcon(str(path)) if path.exists() else QIcon()
 
 
 def _profile_path() -> Path | None:
@@ -107,6 +122,7 @@ class MainWindow(QMainWindow):
     def __init__(self, features: list[str] | None = None):
         super().__init__()
         self.setWindowTitle(APP_NAME)
+        self.setWindowIcon(_app_icon())
         screen = QApplication.primaryScreen()
         available = screen.availableGeometry() if screen else QRect(0, 0, 1240, 790)
         self.setMinimumSize(min(800, available.width()), min(440, available.height()))
@@ -148,10 +164,30 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(sidebar)
         layout.setContentsMargins(10, 14, 10, 10)
         layout.setSpacing(5)
+        brand_row = QHBoxLayout()
+        brand_row.setContentsMargins(7, 4, 7, 4)
+        brand_row.setSpacing(9)
+        mark = QLabel()
+        mark.setObjectName("brandMark")
+        mark.setFixedSize(28, 28)
+        mark.setAccessibleName("SQL Tools logo")
+        source = QPixmap(str(_asset_path("icon.png")))
+        if not source.isNull():
+            ratio = self.devicePixelRatioF()
+            side = round(28 * ratio)
+            pixmap = source.scaled(
+                side,
+                side,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            pixmap.setDevicePixelRatio(ratio)
+            mark.setPixmap(pixmap)
+            brand_row.addWidget(mark)
         brand = QLabel("SQL Tools")
         brand.setObjectName("brand")
-        brand.setContentsMargins(7, 4, 7, 4)
-        layout.addWidget(brand)
+        brand_row.addWidget(brand, 1)
+        layout.addLayout(brand_row)
         self.nav_layout = QVBoxLayout()
         self.nav_layout.setContentsMargins(0, 12, 0, 0)
         self.nav_layout.setSpacing(5)
@@ -442,6 +478,7 @@ def main() -> int:
     app.setOrganizationDomain("sqltools.example")
     app.setApplicationName(APP_NAME)
     app.setApplicationVersion(APP_VERSION)
+    app.setWindowIcon(_app_icon())
     _configure_logging()
     apply_theme(app)
 

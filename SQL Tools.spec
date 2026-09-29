@@ -59,6 +59,10 @@ profile_path = Path("generated/build_profile.json")
 if profile_path.exists():
     datas.append((str(profile_path), "generated"))
 
+runtime_icon = Path("assets/icon.png")
+if runtime_icon.exists():
+    datas.append((str(runtime_icon), "assets"))
+
 icon = Path("assets/icon.icns" if sys.platform == "darwin" else "assets/icon.ico")
 icon_path = str(icon) if icon.exists() else None
 platform_plugins = pyside6_library_info.collect_plugins("platforms")

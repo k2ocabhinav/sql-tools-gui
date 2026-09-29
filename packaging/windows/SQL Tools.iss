@@ -20,6 +20,7 @@ ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=lowest
 OutputBaseFilename=SQL Tools Setup {#AppVersion} Windows x64
 UninstallDisplayIcon={app}\{#AppExeName}
+SetupIconFile=..\..\assets\icon.ico
 WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes

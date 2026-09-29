@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>SQL Tools</title>
+  <desc>Three stacked table slabs; the amber slab is the row that differs.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E2256"/><stop offset="1" stop-color="#150F2C"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#8A55E0" stop-opacity="0.65"/>
+      <stop offset="0.6" stop-color="#623A96" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#623A96" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#05020F" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#05020F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="accent-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FF8A4C" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="a-top" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCCBF7"/></linearGradient>
+    <linearGradient id="a-side" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9A70DE"/><stop offset="0.55" stop-color="#6D42B8"/><stop offset="1" stop-color="#4B2A88"/></linearGradient>
+    <linearGradient id="b-top" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#FFF0C9"/><stop offset="1" stop-color="#FFC36B"/></linearGradient>
+    <linearGradient id="b-side" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFA85C"/><stop offset="0.55" stop-color="#F2683F"/><stop offset="1" stop-color="#C63F3A"/></linearGradient>
+    <linearGradient id="c-top" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#B295E6"/><stop offset="1" stop-color="#EDE3FC"/></linearGradient>
+    <linearGradient id="c-side" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9A70DE"/><stop offset="0.55" stop-color="#6D42B8"/><stop offset="1" stop-color="#4B2A88"/></linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="188" fill="url(#bg)"/>
+  <circle cx="512" cy="470" r="430" fill="url(#glow)"/>
+  <path fill="url(#sheen)" d="M100 288A188 188 0 0 1 288 100H736A188 188 0 0 1 924 288V430Q512 520 100 430Z"/>
+  <ellipse cx="516" cy="814" rx="290" ry="42" fill="url(#shadow)"/>
+  <ellipse cx="570" cy="600" rx="320" ry="170" fill="url(#accent-glow)"/>
+  <g>
+    <path fill="url(#c-side)" d="M245 638V722A228 78 0 0 0 701 722V638Z"/>
+    <path fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3" d="M246.5 644V722A226.5 77 0 0 0 699.5 722V644" />
+    <ellipse cx="473" cy="638" rx="228" ry="78" fill="url(#c-top)"/>
+    <ellipse cx="473" cy="638" rx="226" ry="76" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="3"/>
+  </g>
+  <g>
+    <path fill="url(#b-side)" d="M323 470V554A228 78 0 0 0 779 554V470Z"/>
+    <path fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3" d="M324.5 476V554A226.5 77 0 0 0 777.5 554V476" />
+    <ellipse cx="551" cy="470" rx="228" ry="78" fill="url(#b-top)"/>
+    <ellipse cx="551" cy="470" rx="226" ry="76" fill="none" stroke="#FFFFFF" stroke-opacity="0.75" stroke-width="3"/>
+  </g>
+  <g>
+    <path fill="url(#a-side)" d="M245 302V386A228 78 0 0 0 701 386V302Z"/>
+    <path fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3" d="M246.5 308V386A226.5 77 0 0 0 699.5 386V308" />
+    <ellipse cx="473" cy="302" rx="228" ry="78" fill="url(#a-top)"/>
+    <ellipse cx="473" cy="302" rx="226" ry="76" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="3"/>
+  </g>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="186.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="3"/>
+</svg>
