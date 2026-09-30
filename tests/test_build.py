@@ -137,23 +137,55 @@ def test_spec_trims_only_unused_parts_and_keeps_what_the_app_needs():
     assert "assets/icon.png" in spec
 
 
-def test_disk_image_falls_back_when_lzma_is_not_supported(tmp_path, monkeypatch):
-    attempts = []
+def _fake_disk_tools(monkeypatch, fail_formats=()):
+    """Record commands; simulate ditto by copying, and hdiutil by snapshotting the staging folder."""
+    import shutil
+
+    calls = []
 
     def fake_run(command, *, env=None):
-        attempts.append(command[command.index("--format") + 1])
-        if attempts[-1] == "ULMO":
-            raise subprocess.CalledProcessError(1, command)
+        calls.append(command)
+        if command[0] == "ditto":
+            shutil.copytree(command[1], command[2], symlinks=True)
+        elif command[0] == "hdiutil":
+            staging = Path(command[command.index("-srcfolder") + 1])
+            calls[-1] = [*command, sorted(item.name for item in staging.iterdir())]
+            if command[command.index("-format") + 1] in fail_formats:
+                raise subprocess.CalledProcessError(1, command)
 
     monkeypatch.setattr(_BUILD, "run", fake_run)
-    _BUILD.create_disk_image(tmp_path / "SQL Tools.app", tmp_path / "out.dmg", {})
-    assert attempts == ["ULMO", "UDZO"]
+    return calls
+
+
+def test_disk_image_holds_the_app_and_an_applications_shortcut(tmp_path, monkeypatch):
+    app = tmp_path / "SQL Tools.app"
+    (app / "Contents").mkdir(parents=True)
+    (app / "Contents" / "Info.plist").write_text("plist")
+    calls = _fake_disk_tools(monkeypatch)
+
+    _BUILD.create_disk_image(app, tmp_path / "out.dmg", {})
+
+    hdiutil = next(call for call in calls if call[0] == "hdiutil")
+    assert hdiutil[hdiutil.index("-volname") + 1] == "SQL Tools"
+    # The volume root must contain the .app itself, not a bare "Contents" folder.
+    assert hdiutil[-1] == ["Applications", "SQL Tools.app"]
+    assert hdiutil[hdiutil.index("-format") + 1] == "ULMO"
+
+
+def test_disk_image_falls_back_when_lzma_is_not_supported(tmp_path, monkeypatch):
+    app = tmp_path / "SQL Tools.app"
+    app.mkdir()
+    calls = _fake_disk_tools(monkeypatch, fail_formats=("ULMO",))
+
+    _BUILD.create_disk_image(app, tmp_path / "out.dmg", {})
+
+    formats = [call[call.index("-format") + 1] for call in calls if call[0] == "hdiutil"]
+    assert formats == ["ULMO", "UDZO"]
 
 
 def test_disk_image_reports_failure_when_every_format_fails(tmp_path, monkeypatch):
-    def always_fail(command, *, env=None):
-        raise subprocess.CalledProcessError(1, command)
-
-    monkeypatch.setattr(_BUILD, "run", always_fail)
+    app = tmp_path / "SQL Tools.app"
+    app.mkdir()
+    _fake_disk_tools(monkeypatch, fail_formats=("ULMO", "UDZO"))
     with pytest.raises(subprocess.CalledProcessError):
-        _BUILD.create_disk_image(tmp_path / "SQL Tools.app", tmp_path / "out.dmg", {})
+        _BUILD.create_disk_image(app, tmp_path / "out.dmg", {})

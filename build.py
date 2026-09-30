@@ -53,28 +53,40 @@ def create_portable_zip(app_dir: Path, portable: Path) -> None:
             archive.write(path, Path("SQL Tools") / path.relative_to(app_dir))
 
 
-# LZMA is about a quarter smaller than zlib but needs a recent macOS; older
-# systems (such as CI runners) reject it, so fall back to the universal format.
+# LZMA is about a quarter smaller than zlib but needs macOS 10.15+; keep zlib as a fallback.
 DISK_IMAGE_FORMATS = ("ULMO", "UDZO")
 
 
 def create_disk_image(app_bundle: Path, disk_image: Path, env: dict[str, str]) -> None:
-    for position, image_format in enumerate(DISK_IMAGE_FORMATS):
-        try:
-            run(
-                [
-                    "diskutil", "image", "create", "from",
-                    "--format", image_format,
-                    str(app_bundle), str(disk_image),
-                ],
-                env=env,
-            )
-            return
-        except subprocess.CalledProcessError:
-            disk_image.unlink(missing_ok=True)
-            if position == len(DISK_IMAGE_FORMATS) - 1:
-                raise
-            print(f"Disk image format {image_format} is not supported here; trying the next one.")
+    """Build a drag-to-install .dmg: the app plus an Applications shortcut.
+
+    hdiutil places the *contents* of the source folder at the volume root, so the app
+    is copied into a staging folder first; pointing it at the .app itself would put
+    a bare ``Contents`` folder in the volume. hdiutil (unlike ``diskutil image``) is
+    available on every macOS version, including CI runners.
+    """
+    with tempfile.TemporaryDirectory(prefix="sql-tools-dmg-") as staging_name:
+        staging = Path(staging_name)
+        run(["ditto", str(app_bundle), str(staging / app_bundle.name)], env=env)
+        (staging / "Applications").symlink_to("/Applications")
+        for position, image_format in enumerate(DISK_IMAGE_FORMATS):
+            try:
+                run(
+                    [
+                        "hdiutil", "create",
+                        "-volname", app_bundle.stem,
+                        "-srcfolder", str(staging),
+                        "-format", image_format,
+                        "-ov", str(disk_image),
+                    ],
+                    env=env,
+                )
+                return
+            except subprocess.CalledProcessError:
+                disk_image.unlink(missing_ok=True)
+                if position == len(DISK_IMAGE_FORMATS) - 1:
+                    raise
+                print(f"Disk image format {image_format} is not supported here; trying the next one.")
 
 
 def windows_installer_command(
