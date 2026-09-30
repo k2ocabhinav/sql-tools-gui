@@ -11,7 +11,6 @@ Features:
 - Track record counts for each table
 - Generate Excel summary
 
-Author: Abhinav Prasad
 """
 
 import os

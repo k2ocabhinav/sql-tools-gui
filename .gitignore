@@ -1,24 +1,36 @@
+# Python bytecode and package metadata
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
 
-# Environments
-.env
-.venv
-env/
+# Python environments and local configuration
+.venv/
 venv/
+env/
 ENV/
-env.bak/
-venv.bak/
+.env
+.env.*
+!.env.example
+.sqltools-private.json
+*.local.json
+*.local.toml
 
-# IDEs
+# Editors and operating system metadata
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -27,22 +39,52 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# PyInstaller build artifacts (do NOT commit these)
+# Build products and generated profiles
 build/
 dist/
+.sqltools-build/
+SQL Tools.app/
+*.app/
+*.dmg
+*.exe
+*.msi
+*.zip
+generated/build_profile.json
+generated/build_profile.py
 *.spec.bak
 
-# Local assistant/tooling metadata (keep private)
+# Company-only legacy utility; retained locally, excluded from the public project
+/bp_csv_to_sql.py
+
+# User supplied exports and generated database documents. Add sanitized fixtures
+# under a deliberate, reviewed test-data folder only when they contain no private data.
+**/[tT]able [eE]xports/
+**/[tT]able_[eE]xports/
+**/[eE]xample/
+**/[eE]xamples/
+**/[iI]nsert_consolidator_logic/
+*.sql
+*.csv
+*.xlsx
+*.xls
+*.dump
+*.bak
+*.[sS][qQ][lL]
+*.[cC][sS][vV]
+*.[xX][lL][sS]
+*.[xX][lL][sS][xX]
+*.[dD][uU][mM][pP]
+*.[bB][aA][kK]
+
+# Internal-only design notes, architecture decisions, and release checklists
+/internal_docs/
+/Internal_docs/
+/docs/internal/
+/docs/Internal/
 AGENTS.md
 CLAUDE.md
 .claude/
 
-# Local helper scripts
+# Local helper scripts and build logs
 build_menu.bat
-
-# Build logs
 build_log*.txt
-
-# Internal sample data (not needed for public release)
-examples/
-insert_consolidator_logic/

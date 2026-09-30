@@ -7,7 +7,6 @@ and wrapping with DELIMITER statements.
 
 Supports: PROCEDURE, FUNCTION, TRIGGER
 
-Author: Abhinav Prasad
 """
 
 import os
@@ -58,22 +57,24 @@ DEFINER_PATTERN = re.compile(r"DEFINER\s*=\s*\S+\s+", re.IGNORECASE)
 # HEADER GENERATION
 # ============================================================================
 
-def get_header(filename_nomen: str, timestamp: str, developer_name: str = "Abhinav Prasad") -> str:
+def get_header(filename_nomen: str, timestamp: str, developer_name: str = "",
+               description: str = "") -> str:
     """Generate the file header with metadata."""
+    description_text = f"    {description}" if description else "     "
     return f"""
-/* 
+/*
 Filename Nomencalature :- {filename_nomen}
 
 For example: 
-V20240829_01__booking_request_details_sp 
-V20240829_02__booking_request_details_sp 
+V20240101_01__sample_procedure
+V20240101_02__sample_procedure
 */ 
 
--- ==================================================================================================== 
+-- ====================================================================================================
 -- Created/Modified By    :    {developer_name}
 -- Created/Modified Time  :    {timestamp}
--- Description            :     
--- ==================================================================================================== 
+-- Description            :{description_text}
+-- ====================================================================================================
 """
 
 
@@ -111,8 +112,9 @@ def detect_object_type(content: str) -> tuple[str | None, str | None]:
 # PROCESSING FUNCTIONS
 # ============================================================================
 
-def process_single_object(content: str, sequence_num: int, date_str: str, 
-                          timestamp_str: str, developer_name: str = "Abhinav Prasad") -> tuple[str, str, str, str] | None:
+def process_single_object(content: str, sequence_num: int, date_str: str,
+                          timestamp_str: str, developer_name: str = "",
+                          description: str = "") -> tuple[str, str, str, str] | None:
     """
     Process a single SQL object (procedure, function, or trigger).
     
@@ -134,7 +136,7 @@ def process_single_object(content: str, sequence_num: int, date_str: str,
     content = re.sub(rf"CREATE\s+{obj_type}", f"CREATE {obj_type}", content, flags=re.IGNORECASE)
     
     # Comment out Debug Lines (for procedures and functions)
-    if obj_type in ('PROCEDURE', 'FUNCTION'):
+    if obj_type in ('PROCEDURE', 'FUNCTION', 'TRIGGER'):
         content = DEBUG_PATTERN.sub(r"\1-- \2", content)
     
     # Clean trailing delimiters
@@ -144,7 +146,7 @@ def process_single_object(content: str, sequence_num: int, date_str: str,
     new_filename = f"{date_str}_{sequence_num:02d}__{obj_name}.sql"
     
     # Generate Header
-    header = get_header(new_filename, timestamp_str, developer_name)
+    header = get_header(new_filename, timestamp_str, developer_name, description)
     
     # Generate DROP statement based on type
     drop_stmt = f"DROP {obj_type} IF EXISTS `{obj_name}`;"
@@ -206,8 +208,9 @@ def split_sql_objects(raw_sql: str) -> list[str]:
     return sql_objects
 
 
-def process_pasted_content(raw_text: str, starting_seq: int = 1, 
-                           developer_name: str = "Abhinav Prasad") -> list[dict]:
+def process_pasted_content(raw_text: str, starting_seq: int = 1,
+                           developer_name: str = "",
+                           description: str = "") -> list[dict]:
     """
     Process pasted SQL content containing one or more objects.
     
@@ -228,8 +231,8 @@ def process_pasted_content(raw_text: str, starting_seq: int = 1,
     current_seq = starting_seq
     
     for sql_block in sql_objects:
-        result = process_single_object(sql_block, current_seq, date_str, 
-                                       timestamp_str, developer_name)
+        result = process_single_object(sql_block, current_seq, date_str,
+                                       timestamp_str, developer_name, description)
         
         if result:
             formatted, obj_name, filename, obj_type = result
@@ -251,7 +254,7 @@ def process_pasted_content(raw_text: str, starting_seq: int = 1,
 
 
 def process_folder(input_folder: str, output_folder: str, starting_seq: int = 1,
-                   developer_name: str = "Abhinav Prasad") -> dict:
+                   developer_name: str = "", description: str = "") -> dict:
     """
     Process all SQL files from input folder and write to output folder.
     
@@ -304,7 +307,7 @@ def process_folder(input_folder: str, output_folder: str, starting_seq: int = 1,
             
             for sql_block in sql_objects:
                 result = process_single_object(sql_block, current_seq, date_str,
-                                               timestamp_str, developer_name)
+                                               timestamp_str, developer_name, description)
                 
                 if result:
                     formatted, obj_name, filename, obj_type = result
@@ -329,7 +332,7 @@ def process_folder(input_folder: str, output_folder: str, starting_seq: int = 1,
 
 
 def process_pasted_to_files(raw_text: str, output_folder: str, starting_seq: int = 1,
-                            developer_name: str = "Abhinav Prasad") -> dict:
+                            developer_name: str = "", description: str = "") -> dict:
     """
     Process pasted content and save each object to a file.
     
@@ -343,7 +346,7 @@ def process_pasted_to_files(raw_text: str, output_folder: str, starting_seq: int
     output_path = Path(output_folder)
     output_path.mkdir(parents=True, exist_ok=True)
     
-    processed_items = process_pasted_content(raw_text, starting_seq, developer_name)
+    processed_items = process_pasted_content(raw_text, starting_seq, developer_name, description)
     
     for item in processed_items:
         if 'error' in item:

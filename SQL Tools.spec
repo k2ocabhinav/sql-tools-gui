@@ -1,155 +1,129 @@
-# -*- mode: python ; coding: utf-8 -*-
-# =============================================================================
-# PyInstaller spec file for SQL Tools GUI
-# =============================================================================
-
-import os
+# Native PyInstaller bundle for the Qt Widgets application.
+import json
+import sys
 from pathlib import Path
+import PyInstaller
+from PyInstaller.utils.hooks.qt import pyside6_library_info
 
-block_cipher = None
+sys.path.insert(0, str(Path.cwd()))
+from sqltools import __version__ as VERSION
 
 ALL_FEATURES = [
     "INSERT_CONSOLIDATOR",
     "DB_AUTOMATION",
     "WORKFILE_GENERATOR",
     "MULTI_SCHEMA",
+    "TABLE_COMPARE",
 ]
-
-BASE_HIDDENIMPORTS = [
-    # Ensure logic package root exists for dynamic imports
-    "logic",
-    # tkinter
-    "tkinter",
-    "tkinter.ttk",
-    "tkinter.filedialog",
-    "tkinter.messagebox",
-    "tkinter.scrolledtext",
-]
-
-FEATURE_TO_HIDDENIMPORTS = {
-    "INSERT_CONSOLIDATOR": [
+FEATURE_MODULES = {
+    "INSERT_CONSOLIDATOR": ["sqltools.ui.insert_page", "logic.insert_consolidator"],
+    "DB_AUTOMATION": ["sqltools.ui.db_automation_page", "logic.db_automation"],
+    "WORKFILE_GENERATOR": ["sqltools.ui.workfile_page", "logic.workfile_generator"],
+    "MULTI_SCHEMA": ["sqltools.ui.multi_schema_page", "logic.multi_schema_combiner"],
+    "TABLE_COMPARE": [
+        "sqltools.ui.table_compare_page",
+        "logic.table_comparator",
         "logic.insert_consolidator",
-        # openpyxl sub-modules that PyInstaller can miss
-        "openpyxl",
-        "openpyxl.cell._writer",
-        "openpyxl.styles.stylesheet",
-        "openpyxl.styles.fills",
-        "openpyxl.styles.fonts",
-        "openpyxl.styles.borders",
-        "openpyxl.styles.alignment",
-        "openpyxl.styles.protection",
-        "openpyxl.writer.excel",
-        "openpyxl.reader.excel",
-        "openpyxl.utils",
-        "openpyxl.utils.dataframe",
-    ],
-    "DB_AUTOMATION": [
-        "logic.db_automation",
-    ],
-    "WORKFILE_GENERATOR": [
-        "logic.workfile_generator",
-    ],
-    "MULTI_SCHEMA": [
         "logic.multi_schema_combiner",
     ],
 }
 
+try:
+    profile = json.loads(Path("generated/build_profile.json").read_text(encoding="utf-8"))
+    selected_features = profile.get("enabled_features", ALL_FEATURES)
+except (OSError, ValueError):
+    selected_features = ALL_FEATURES
+selected_features = [feature for feature in ALL_FEATURES if feature in selected_features]
+if not selected_features:
+    selected_features = ALL_FEATURES
 
-def _normalize_features(raw_features):
-    normalized = []
-    seen = set()
-    for item in raw_features:
-        token = str(item).strip().upper()
-        if not token or token not in ALL_FEATURES or token in seen:
-            continue
-        normalized.append(token)
-        seen.add(token)
-    return normalized
-
-
-def _load_selected_features():
-    raw = os.environ.get("SQL_TOOLS_FEATURES", "")
-    if raw:
-        selected = _normalize_features(raw.split(","))
-        if selected:
-            return selected
-
-    profile_path = Path("generated") / "build_profile.py"
-    if profile_path.exists():
-        namespace = {}
-        exec(profile_path.read_text(encoding="utf-8"), namespace)
-        selected = _normalize_features(namespace.get("ENABLED_FEATURES", []))
-        if selected:
-            return selected
-
-    # Fallback to full build
-    return list(ALL_FEATURES)
-
-
-selected_features = _load_selected_features()
-
-hiddenimports = list(BASE_HIDDENIMPORTS)
+hiddenimports = [
+    "PySide6.QtCore",
+    "PySide6.QtGui",
+    "PySide6.QtWidgets",
+    "shiboken6",
+    "_pyi_rth_utils",
+    "_pyi_rth_utils.qt",
+    "sqltools.jobs",
+    "sqltools.services",
+    "sqltools.theme",
+]
 for feature in selected_features:
-    hiddenimports.extend(FEATURE_TO_HIDDENIMPORTS.get(feature, []))
-
-# Keep deterministic order while removing duplicates
+    hiddenimports.extend(FEATURE_MODULES[feature])
+if any(feature in selected_features for feature in ("INSERT_CONSOLIDATOR", "TABLE_COMPARE")):
+    hiddenimports.extend(["openpyxl", "openpyxl.cell._writer", "openpyxl.writer.excel"])
 hiddenimports = list(dict.fromkeys(hiddenimports))
 
-datas = [
-    # Include shared assets (icon, etc.)
-    ("assets", "assets"),
-]
-if Path("generated").exists():
-    datas.append(("generated", "generated"))
+datas = []
+profile_path = Path("generated/build_profile.json")
+if profile_path.exists():
+    datas.append((str(profile_path), "generated"))
+
+icon = Path("assets/icon.icns" if sys.platform == "darwin" else "assets/icon.ico")
+icon_path = str(icon) if icon.exists() else None
+platform_plugins = pyside6_library_info.collect_plugins("platforms")
+if not platform_plugins:
+    # PyInstaller's default collector uses glob patterns, which treat square
+    # brackets in paths as character classes. Resolve the essential Qt platform
+    # plugins with pathlib when the checkout lives in a path containing square brackets.
+    plugin_dir = Path(pyside6_library_info.location["PluginsPath"]) / "platforms"
+    platform_plugins = [
+        (str(path), "PySide6/Qt/plugins/platforms")
+        for path in plugin_dir.iterdir()
+        if path.is_file() and path.suffix.lower() in {".dll", ".dylib", ".so"}
+    ]
 
 a = Analysis(
-    ["sql_tools.py"],
-    pathex=["."],
-    binaries=[],
+    ["sqltools/__main__.py"],
+    pathex=[".", str(Path(PyInstaller.__file__).parent / "fake-modules")],
+    binaries=platform_plugins,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[
-        # Exclude heavy packages we do not need
-        "matplotlib",
-        "numpy",
-        "pandas",
-        "scipy",
-        "PIL",
-        "cv2",
-        "tensorflow",
-        "torch",
-    ],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
+    excludes=["tkinter", "matplotlib", "numpy", "pandas", "scipy", "PIL", "cv2", "torch"],
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-
+pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name="SQL Tools",
     debug=False,
-    bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon="assets\\icon.ico",
-    version_info=None,
+    icon=icon_path,
 )
+collected = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    name="SQL Tools",
+)
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        collected,
+        name="SQL Tools.app",
+        icon=icon_path,
+        bundle_identifier="org.sqltools.desktop",
+        info_plist={
+            "CFBundleName": "SQL Tools",
+            "CFBundleDisplayName": "SQL Tools",
+            "CFBundleShortVersionString": VERSION,
+            "NSHighResolutionCapable": True,
+            "LSMinimumSystemVersion": "12.0",
+        },
+    )

@@ -1,0 +1,79 @@
+name: Build and validate SQL Tools
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-package:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-2022
+          - name: macOS arm64
+            os: macos-15
+            artifact: SQL-Tools-macOS-arm64
+          - name: macOS x64
+            os: macos-15-intel
+            artifact: SQL-Tools-macOS-x64
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: 0.12.19
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Lint
+        run: uv run --locked ruff check .
+
+      - name: Run regression tests
+        run: uv run --locked pytest
+
+      - name: Run source startup smoke test
+        run: uv run --locked python -m sqltools --smoke-test
+
+      - name: Install Inno Setup
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build native distribution and smoke-test it
+        id: build
+        run: uv run --locked python build.py --public
+
+      - name: Upload Windows artifacts
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: SQL-Tools-Windows-x64
+          path: |
+            ${{ steps.build.outputs.build_dir }}/*.zip
+            ${{ steps.build.outputs.build_dir }}/SQL Tools Setup*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload macOS artifact
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ steps.build.outputs.build_dir }}/*.dmg
+          if-no-files-found: error
+          retention-days: 14

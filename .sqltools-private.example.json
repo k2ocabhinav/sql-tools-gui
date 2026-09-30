@@ -1,0 +1,14 @@
+{
+  "default_schemas": [
+    "schema_a",
+    "schema_b",
+    "schema_c",
+    "schema_d",
+    "schema_e",
+    "schema_f",
+    "schema_g"
+  ],
+  "schema_prefix": "schema_",
+  "developer_name": "Developer",
+  "temp_prefix": "temp_"
+}

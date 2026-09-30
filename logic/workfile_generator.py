@@ -5,8 +5,6 @@ Creates standardized SQL files from raw MySQL Workbench code with proper
 headers, JIRA folder management, and backup creation.
 
 Supports: PROCEDURE, FUNCTION, TRIGGER, VIEW
-
-Author: Abhinav Prasad
 """
 
 import os
@@ -15,10 +13,13 @@ import glob
 from datetime import datetime
 from pathlib import Path
 
+from logic.multi_schema_combiner import DEFAULT_SCHEMAS
+from logic.private_defaults import default_developer_name, default_temp_prefix
 
-# Default configuration
-DEFAULT_DEVELOPER = "Abhinav Prasad"
-DEFAULT_TEMP_PREFIX = "temp_ap_"
+
+# Default configuration comes from the ignored local settings or a build profile.
+DEFAULT_DEVELOPER = default_developer_name()
+DEFAULT_TEMP_PREFIX = default_temp_prefix()
 
 
 def get_current_date_stamp() -> str:
@@ -73,7 +74,7 @@ def generate_header(sql_type: str, object_name: str, jira_id: str,
                     description: str = "") -> str:
     """Generate the header block with USE, DROP statements, and comment block."""
     
-    use_stmt = "USE db_ostrum_ltn; -- db_ostrum_ltn; db_ostrum_lgw; db_ostrum_beg; db_ostrum_scl; db_ostrum_dmo; db_ostrum_jfk"
+    use_stmt = f"USE {DEFAULT_SCHEMAS[0]};"
     
     temp_name = f"{temp_prefix}{object_name}"
     
@@ -220,8 +221,9 @@ def create_jira_folder(jira_num: str, base_dir: str, description: str = "") -> s
 
 def get_next_version_number(folder_path: str, object_name: str, date_stamp: str) -> int:
     """Determine the next version number for the file."""
-    pattern = f"{date_stamp}_*{object_name}.sql"
-    existing = glob.glob(os.path.join(folder_path, pattern))
+    # Escape the folder: JIRA folder names contain "[...]", which glob reads as a character class.
+    pattern = f"{date_stamp}_*{glob.escape(object_name)}.sql"
+    existing = glob.glob(os.path.join(glob.escape(folder_path), pattern))
     
     if not existing:
         return 1

@@ -1,7 +1,4 @@
-"""Compatibility launcher; the application implementation lives in ``sqltools``."""
-
 from sqltools.app import main
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
