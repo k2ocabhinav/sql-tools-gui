@@ -42,10 +42,39 @@ def run(command: list[str], *, env: dict[str, str] | None = None) -> None:
 
 
 def create_portable_zip(app_dir: Path, portable: Path) -> None:
+    # Sort on the posix path string: sorting Path objects is case-insensitive on
+    # Windows and case-sensitive elsewhere, which would make the order platform-dependent.
+    files = sorted(
+        (path for path in app_dir.rglob("*") if path.is_file()),
+        key=lambda path: path.relative_to(app_dir).as_posix(),
+    )
     with zipfile.ZipFile(portable, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in sorted(app_dir.rglob("*")):
-            if path.is_file():
-                archive.write(path, Path("SQL Tools") / path.relative_to(app_dir))
+        for path in files:
+            archive.write(path, Path("SQL Tools") / path.relative_to(app_dir))
+
+
+# LZMA is about a quarter smaller than zlib but needs a recent macOS; older
+# systems (such as CI runners) reject it, so fall back to the universal format.
+DISK_IMAGE_FORMATS = ("ULMO", "UDZO")
+
+
+def create_disk_image(app_bundle: Path, disk_image: Path, env: dict[str, str]) -> None:
+    for position, image_format in enumerate(DISK_IMAGE_FORMATS):
+        try:
+            run(
+                [
+                    "diskutil", "image", "create", "from",
+                    "--format", image_format,
+                    str(app_bundle), str(disk_image),
+                ],
+                env=env,
+            )
+            return
+        except subprocess.CalledProcessError:
+            disk_image.unlink(missing_ok=True)
+            if position == len(DISK_IMAGE_FORMATS) - 1:
+                raise
+            print(f"Disk image format {image_format} is not supported here; trying the next one.")
 
 
 def windows_installer_command(
@@ -196,20 +225,7 @@ def main() -> int:
         sign_macos(app_bundle, build_env)
         run([str(executable), "--smoke-test"], env=smoke_env)
         disk_image = output_dir / f"SQL Tools {version} macOS {architecture}.dmg"
-        run(
-            [
-                "diskutil",
-                "image",
-                "create",
-                "from",
-                "--format",
-                # LZMA: about a quarter smaller than zlib (UDZO); needs macOS 10.15+.
-                "ULMO",
-                str(app_bundle),
-                str(disk_image),
-            ],
-            env=build_env,
-        )
+        create_disk_image(app_bundle, disk_image, build_env)
         notary_profile = build_env.get("SQL_TOOLS_NOTARY_PROFILE")
         if notary_profile:
             run(

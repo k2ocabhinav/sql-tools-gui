@@ -135,3 +135,25 @@ def test_spec_trims_only_unused_parts_and_keeps_what_the_app_needs():
     assert '"PySide6.QtDBus"' in spec  # only its Python binding is excluded
     assert "libqcocoa" not in spec.split("UNUSED_QT_PARTS")[1].split(")")[0]
     assert "assets/icon.png" in spec
+
+
+def test_disk_image_falls_back_when_lzma_is_not_supported(tmp_path, monkeypatch):
+    attempts = []
+
+    def fake_run(command, *, env=None):
+        attempts.append(command[command.index("--format") + 1])
+        if attempts[-1] == "ULMO":
+            raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(_BUILD, "run", fake_run)
+    _BUILD.create_disk_image(tmp_path / "SQL Tools.app", tmp_path / "out.dmg", {})
+    assert attempts == ["ULMO", "UDZO"]
+
+
+def test_disk_image_reports_failure_when_every_format_fails(tmp_path, monkeypatch):
+    def always_fail(command, *, env=None):
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(_BUILD, "run", always_fail)
+    with pytest.raises(subprocess.CalledProcessError):
+        _BUILD.create_disk_image(tmp_path / "SQL Tools.app", tmp_path / "out.dmg", {})
