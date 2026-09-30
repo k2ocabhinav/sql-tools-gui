@@ -42,3 +42,8 @@ kept in separate, tested modules.
 - Table Compare could enable **Remove** with nothing selected, and could leave a
   previous row's details or filters showing after the data changed.
 - A long error message could force the window to an enormous minimum width.
+- Pages with two columns could scroll sideways when text rendered wider than expected
+  (for example on Windows or with a larger text size). Columns now stack whenever they
+  would not fit side by side.
+- The macOS disk image opened to a bare `Contents` folder instead of the app. It now
+  contains `SQL Tools.app` and an Applications shortcut for drag-to-install.
