@@ -19,7 +19,7 @@ from PySide6.QtCore import (
     QStandardPaths,
     Qt,
 )
-from PySide6.QtGui import QAction, QIcon, QPixmap
+from PySide6.QtGui import QAction, QFont, QFontMetrics, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -245,6 +245,17 @@ class MainWindow(QMainWindow):
             self.nav_buttons.append(button)
             self.nav_layout.addWidget(button)
         self.nav_buttons[0].setChecked(True)
+        self._fit_sidebar_to_labels()
+
+    def _fit_sidebar_to_labels(self) -> None:
+        """Keep the rail 204 px at normal text size, but widen it for larger text so
+        the longest label (shown semibold when selected) is never truncated."""
+        bold = QFont(self.font())
+        bold.setWeight(QFont.Weight.DemiBold)
+        metrics = QFontMetrics(bold)
+        label = max(metrics.horizontalAdvance(button.text()) for button in self.nav_buttons)
+        button_padding, sidebar_margins, slack = 20, 20, 10
+        self.sidebar.setFixedWidth(max(204, label + button_padding + sidebar_margins + slack))
 
     def _build_menu(self) -> None:
         file_menu = self.menuBar().addMenu("File")

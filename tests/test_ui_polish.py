@@ -308,3 +308,96 @@ def test_main_window_uses_the_app_icon_and_shows_the_brand_mark(qtbot, monkeypat
     assert not window.windowIcon().isNull()
     mark = window.sidebar.findChild(QLabel, "brandMark")
     assert mark is not None and not mark.pixmap().isNull()
+
+
+@pytest.fixture
+def scaled_font():
+    """Enlarge the application font (Windows renders the same point size ~33% wider)."""
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    original = app.font()
+
+    def apply(scale: float) -> None:
+        font = app.font()
+        font.setPointSizeF(original.pointSizeF() * scale)
+        app.setFont(font)
+
+    yield apply
+    app.setFont(original)
+
+
+@pytest.mark.parametrize("scale", [1.0, 1.33, 1.6])
+@pytest.mark.parametrize("size", [(800, 600), (1024, 700), (1240, 790)])
+def test_no_page_scrolls_sideways_at_any_text_size(qtbot, monkeypatch, tmp_path, scaled_font, scale, size):
+    """Wider text must stack the columns instead of forcing a horizontal scroll bar."""
+    monkeypatch.setattr(
+        "sqltools.app.QSettings",
+        lambda: QSettings(str(tmp_path / "ui.ini"), QSettings.Format.IniFormat),
+    )
+    scaled_font(scale)
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.resize(*size)
+    window.show()
+    qtbot.wait(20)
+    for page_index, page in enumerate(window.pages):
+        window.nav_buttons[page_index].click()
+        qtbot.wait(10)
+        if not hasattr(page, "mode"):
+            continue
+        for index in [*range(page.mode.content.count()), 0]:
+            page.mode.switch._buttons.button(index).click()
+            qtbot.wait(10)
+            assert page.input_scroll.horizontalScrollBar().maximum() == 0, (
+                type(page).__name__, index, scale, size
+            )
+
+
+def test_columns_stack_when_they_do_not_fit_and_recover_when_they_do(qtbot):
+    """Side by side only if both columns fit at their minimum widths, whatever the font."""
+    from PySide6.QtWidgets import QScrollArea, QWidget
+
+    from sqltools.ui.base import ResponsiveColumns
+
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    columns = ResponsiveColumns()
+    for layout in columns.panel_layouts:
+        filler = QWidget()
+        filler.setMinimumWidth(500)  # two of these need 1016 px side by side
+        layout.addWidget(filler)
+    scroll.setWidget(columns)
+    qtbot.addWidget(scroll)
+    scroll.show()
+
+    scroll.resize(900, 400)
+    qtbot.wait(20)
+    assert columns._horizontal is False  # 1016 needed, ~885 available: stack
+    assert scroll.horizontalScrollBar().maximum() == 0
+    scroll.resize(1300, 400)
+    qtbot.wait(20)
+    assert columns._horizontal is True
+    assert scroll.horizontalScrollBar().maximum() == 0
+    scroll.resize(900, 400)
+    qtbot.wait(20)
+    assert columns._horizontal is False
+    assert scroll.horizontalScrollBar().maximum() == 0
+
+
+def test_navigation_rail_keeps_its_width_and_grows_for_larger_text(qtbot, monkeypatch, tmp_path, scaled_font):
+    monkeypatch.setattr(
+        "sqltools.app.QSettings",
+        lambda: QSettings(str(tmp_path / "ui.ini"), QSettings.Format.IniFormat),
+    )
+    normal = MainWindow()
+    qtbot.addWidget(normal)
+    assert normal.sidebar.width() == 204 or normal.sidebar.maximumWidth() == 204
+    scaled_font(1.8)
+    large = MainWindow()
+    qtbot.addWidget(large)
+    large.show()
+    qtbot.wait(20)
+    assert large.sidebar.maximumWidth() > 204
+    for button in large.nav_buttons:
+        assert button.fontMetrics().horizontalAdvance(button.text()) < button.width()

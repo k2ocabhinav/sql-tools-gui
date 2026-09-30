@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
@@ -128,7 +128,25 @@ class MultiSchemaPage(FeaturePage):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         if hasattr(self, "output_section"):
-            self._reflow_sections(self.width() < 680)
+            self._reflow_sections(not self._sections_fit_side_by_side())
+
+    def event(self, event) -> bool:
+        handled = super().event(event)
+        if event.type() == QEvent.Type.LayoutRequest and hasattr(self, "output_section"):
+            self._reflow_sections(not self._sections_fit_side_by_side())
+        return handled
+
+    def _sections_fit_side_by_side(self) -> bool:
+        """Source and schemas share a row only when both fit at their minimum widths."""
+        available = self.input_scroll.viewport().width()
+        if available < 680:
+            return False
+        needed = (
+            self.source_section.minimumSizeHint().width()
+            + self.schemas_section.minimumSizeHint().width()
+            + self.content_grid.horizontalSpacing()
+        )
+        return needed <= available
 
     def _reflow_sections(self, stacked: bool) -> None:
         if getattr(self, "_is_stacked_layout", None) == stacked:
@@ -152,7 +170,7 @@ class MultiSchemaPage(FeaturePage):
         self.input_layout.setStretch(
             self.input_layout.indexOf(self.content_grid_widget), 1 if mode == "paste" else 0
         )
-        self._reflow_sections(self.width() < 680)
+        self._reflow_sections(not self._sections_fit_side_by_side())
 
     def _insert_schema(self, name: str) -> None:
         check = CheckBox(name)

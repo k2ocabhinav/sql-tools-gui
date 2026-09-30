@@ -225,6 +225,9 @@ class MultiFilePicker(QWidget):
         actions.setContentsMargins(0, 0, 0, 0)
         self.count = QLabel("No files selected")
         self.count.setObjectName("muted")
+        # Let the status text give way before the buttons do, so a narrow column
+        # never gets wider (and scrolls sideways) just to fit this caption.
+        self.count.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.add_button = QPushButton("Add files…")
         self.remove_button = QPushButton("Remove selected")
         self.clear_button = QPushButton("Clear")

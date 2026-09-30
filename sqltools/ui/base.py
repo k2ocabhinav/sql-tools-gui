@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
+from PySide6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -79,9 +79,44 @@ class ResponsiveColumns(QWidget):
             self.grid.setColumnStretch(0, 1)
             self.grid.setRowStretch(2, 1)
 
+    def available_width(self) -> int:
+        """Width the columns can really use: the enclosing scroll viewport.
+
+        The widget's own width is no help here: inside a scroll area it grows to its
+        minimum size, so a layout that does not fit would always look like it fits.
+        """
+        parent = self.parentWidget()
+        while parent is not None:
+            if isinstance(parent, QScrollArea):
+                return parent.viewport().width()
+            parent = parent.parentWidget()
+        return self.width()
+
+    def fits_side_by_side(self) -> bool:
+        """Side by side only when both columns fit at their minimum widths.
+
+        Text width depends on the platform, display scaling and the user's text size,
+        so a fixed breakpoint alone would let wider fonts push the page sideways.
+        """
+        available = self.available_width()
+        if available < self.BREAKPOINT:
+            return False
+        needed = sum(panel.minimumSizeHint().width() for panel in self.panels)
+        return needed + self.grid.horizontalSpacing() <= available
+
+    def refresh(self) -> None:
+        self.set_horizontal(self.fits_side_by_side())
+
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self.set_horizontal(self.width() >= self.BREAKPOINT)
+        self.refresh()
+
+    def event(self, event) -> bool:
+        handled = super().event(event)
+        if event.type() == QEvent.Type.LayoutRequest:
+            # A child's minimum size changed (for example a different input mode).
+            self.refresh()
+        return handled
 
 
 class FeaturePage(QWidget):
@@ -232,6 +267,12 @@ class FeaturePage(QWidget):
         """Keep responsive sections top-aligned while their container grows."""
         for columns in self._responsive_columns:
             columns.finish_inputs()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        # The scroll viewport can change size without its content widget changing.
+        for columns in self._responsive_columns:
+            columns.refresh()
 
     def set_busy(self, busy: bool) -> None:
         for button in self._run_buttons:
