@@ -94,7 +94,7 @@ class ChoiceSwitch(QWidget):
         # never clips a label or shifts its neighbours.
         bold = QFont(button.font())
         bold.setWeight(QFont.Weight.DemiBold)
-        button.setMinimumWidth(QFontMetrics(bold).horizontalAdvance(text) + 28)
+        button.setMinimumWidth(QFontMetrics(bold).horizontalAdvance(text) + 22)
         self._buttons.addButton(button, index)
         self._layout.addWidget(button)
         if index == 0:
